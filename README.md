@@ -4,8 +4,6 @@ Chat application in GO
 
 
 
-
-
 Co-developed by following devs:
 1. Saurabh Kumar (srbhkmrx@gmail.com)
 2. Shashank Rai (grave.shashank12@gmail.com)
