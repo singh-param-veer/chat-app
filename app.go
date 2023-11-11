@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"strconv"
 	"strings"
 	model "web-service/model"
+	users "web-service/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -41,17 +41,6 @@ type user struct {
 	Age  float64 `json:"age"`
 }
 
-var users = []user{
-	{ID: "1", Name: "Shashank Rai", Age: 27},
-	{ID: "2", Name: "Saurabh Kumar", Age: 28},
-	{ID: "3", Name: "Prashant Sharma", Age: 27},
-}
-
-func getUsers(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, users)
-
-}
-
 var activeSocketUsers map[int]*websocket.Conn = make(map[int]*websocket.Conn)
 
 func startSocketMessaging(conn *websocket.Conn) {
@@ -73,7 +62,6 @@ func startSocketMessaging(conn *websocket.Conn) {
 		}
 
 		messageRedirecting(body.Receiver, body)
-
 
 		output := "Ongoing Tasks: \n"
 		if len(todoList) == 0 {
@@ -103,7 +91,10 @@ func messageRedirecting(receiver int, message model.Message) {
 
 func main() {
 	router := gin.Default()
-	router.GET("/users", getUsers)
+	//POST endpoint to create new users
+	router.POST("/users", users.CreateUser)
+	// GET endpoint to retrieve all users
+	router.GET("/users", users.GetUsers)
 	router.GET("/ws", func(c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
