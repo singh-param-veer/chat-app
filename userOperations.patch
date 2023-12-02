@@ -1,0 +1,114 @@
+diff --git a/app.go b/app.go
+index d4086c9..6ecd662 100644
+--- a/app.go
++++ b/app.go
+@@ -3,10 +3,10 @@ package main
+ import (
+ 	"fmt"
+ 	"log"
+-	"net/http"
+ 	"strconv"
+ 	"strings"
+ 	model "web-service/model"
++	users "web-service/services"
+ 
+ 	"github.com/gin-gonic/gin"
+ 	"github.com/gorilla/websocket"
+@@ -41,17 +41,6 @@ type user struct {
+ 	Age  float64 `json:"age"`
+ }
+ 
+-var users = []user{
+-	{ID: "1", Name: "Shashank Rai", Age: 27},
+-	{ID: "2", Name: "Saurabh Kumar", Age: 28},
+-	{ID: "3", Name: "Prashant Sharma", Age: 27},
+-}
+-
+-func getUsers(c *gin.Context) {
+-	c.IndentedJSON(http.StatusOK, users)
+-
+-}
+-
+ var activeSocketUsers map[int]*websocket.Conn = make(map[int]*websocket.Conn)
+ 
+ func startSocketMessaging(conn *websocket.Conn) {
+@@ -74,7 +63,6 @@ func startSocketMessaging(conn *websocket.Conn) {
+ 
+ 		messageRedirecting(body.Receiver, body)
+ 
+-
+ 		output := "Ongoing Tasks: \n"
+ 		if len(todoList) == 0 {
+ 			output += "Empty"
+@@ -103,7 +91,10 @@ func messageRedirecting(receiver int, message model.Message) {
+ 
+ func main() {
+ 	router := gin.Default()
+-	router.GET("/users", getUsers)
++	//POST endpoint to create new users
++	router.POST("/users", users.CreateUser)
++	// GET endpoint to retrieve all users
++	router.GET("/users", users.GetUsers)
+ 	router.GET("/ws", func(c *gin.Context) {
+ 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+ 		if err != nil {
+diff --git a/services/users.go b/services/users.go
+new file mode 100644
+index 0000000..8b231fa
+--- /dev/null
++++ b/services/users.go
+@@ -0,0 +1,54 @@
++package users
++
++import (
++	"net/http"
++	"strings"
++
++	"github.com/gin-gonic/gin"
++)
++
++type User struct {
++	ID   int    `json:"id"`
++	Name string `json:"name"`
++	Age  int    `json:"age"`
++}
++
++var userList []User
++var lastUserID int
++
++func CreateUser(c *gin.Context) {
++	var newUserInput User
++
++	// Bind the JSON data from the request body to newUserInput
++	if err := c.BindJSON(&newUserInput); err != nil {
++		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user data"})
++		return
++	}
++
++	// Validate user input , the username cannot be empty
++	if newUserInput.Name == "" || strings.TrimSpace(newUserInput.Name) == "" || newUserInput.Age <= 0 {
++		c.JSON(http.StatusBadRequest, gin.H{"error": "Name and age are required and must be valid"})
++		return
++	}
++
++	// Generate a unique user ID for the user created above
++	newUserID := lastUserID + 1
++	lastUserID = newUserID
++
++	// Create a new user with a unique ID generated above
++	newUser := User{
++		ID:   newUserID,
++		Name: newUserInput.Name,
++		Age:  newUserInput.Age,
++	}
++
++	// Append the new user to the userList , this contains all the list of users , will help in retrieving all the users
++	userList = append(userList, newUser)
++
++	// Respond with the newly created user's details after adding the newly created user
++	c.JSON(http.StatusCreated, newUser)
++}
++
++func GetUsers(c *gin.Context) {
++	c.JSON(http.StatusOK, userList)
++}
